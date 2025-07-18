@@ -87,46 +87,37 @@ export const ChatInterface = ({ onBack }: ChatInterfaceProps) => {
     setIsLoading(true);
 
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `You are MediChat AI, a specialized medical assistant focused ONLY on health and medical topics. 
+              text: `Medical AI Assistant - Health questions only.
 
-IMPORTANT GUIDELINES:
-1. ONLY answer questions related to health, medical conditions, symptoms, first aid, wellness, nutrition, exercise, and general medical guidance
-2. If someone asks about non-medical topics (programming, cooking, sports, entertainment, etc.), politely redirect them by saying: "I'm a medical assistant and can only help with health-related questions. Please ask me about symptoms, first aid, wellness, or other health topics."
-3. Always include appropriate medical disclaimers
-4. Never provide specific medical diagnosis - only general health information
-5. Always remind users to consult healthcare professionals for serious concerns
+Question: ${content}
 
-User question: ${content}
-
-If this question is NOT about health or medical topics, politely redirect the user to ask health-related questions instead. If it IS about health/medical topics, provide helpful guidance while emphasizing this is not a substitute for professional medical advice and they should consult healthcare professionals for serious concerns or emergencies.`
+Rules: If not health-related, say "I only help with health questions. Ask about symptoms, first aid, or wellness." If health-related, give brief helpful guidance + remind to consult doctors for serious issues.`
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
+            temperature: 0.4,        // Lower for faster, more focused responses
+            topK: 20,               // Reduced from 40 for speed
+            topP: 0.8,              // Reduced from 0.95 for speed  
+            maxOutputTokens: 300,   // Much lower from 1024 for faster responses
+            candidateCount: 1       // Ensure single response for speed
           },
           safetySettings: [
             {
               category: "HARM_CATEGORY_HARASSMENT",
               threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH", 
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE" 
             },
             {
               category: "HARM_CATEGORY_DANGEROUS_CONTENT",
@@ -135,6 +126,8 @@ If this question is NOT about health or medical topics, politely redirect the us
           ]
         }),
       });
+
+      clearTimeout(timeoutId); // Clear timeout if request completes
 
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`);
